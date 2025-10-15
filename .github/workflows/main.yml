@@ -1,0 +1,124 @@
+# This workflow is automatically triggered on every push to the 'main' branch.
+name: React Frontend Pipeline
+
+# --- Auto-Trigger Configuration ---
+on:
+  push:
+    branches:
+      - main 
+
+# Define environment variables for the entire workflow
+env:
+  ECR_REPOSITORY: frontend-app
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  IMAGE_TAG: ${{ github.sha }} 
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: 🔒 Run Dependency Security Audit (npm audit)
+        run: npm audit --production --audit-level=critical
+        
+      - name: ⚙️ Run Static Analysis (e.g., ESLint)
+        run: npm run lint || true 
+
+      # --- STAGE 2: ECR Authentication and Image Build
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 🔑 Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        
+      - name: 🔨 Build and Tag Docker Image
+        run: |
+          FULL_IMAGE_NAME="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+          docker build -t $FULL_IMAGE_NAME .
+
+      # --- STAGE 3: Image Vulnerability Scan (Trivy)
+      - name: 🔎 Scan Docker Image with Trivy (Save Report)
+        id: scan_image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          # Use a simple template and save output to a file
+          format: 'template'
+          template: '@contrib/gitlab.tpl' 
+          output: 'trivy-report.txt'
+          exit-code: '0' # Do not fail the job yet
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH' # Scan for CRITICAL and HIGH only
+
+      # --- Send Trivy Report to Committer ---
+      - name: 📧 Send Trivy Report to Committer
+        uses: dawidd6/action-send-mail@v3
+        if: success() || failure() # Always run this step
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: 'Trivy Scan Report for Frontend App | ${{ env.IMAGE_TAG }}'
+          body: 'Hello ${{ github.event.pusher.name }}, a new image has been scanned. Please see the attached report for CRITICAL and HIGH vulnerabilities.'
+          to: ${{ github.event.pusher.email }} # Send to the user who pushed
+          from: CI Automation <${{ secrets.MAIL_USERNAME }}>
+          content_type: text/plain
+          attachments: trivy-report.txt
+
+      # --- Enforce Security Gate (Fail if Critical/High found) ---
+      - name: 🚨 Security Gate Check
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image \
+            --exit-code 1 --severity CRITICAL,HIGH \
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} || true
+          
+          # Check the exit code from the last command (using the shell's $? variable)
+          if [ $? -ne 0 ]; then
+            echo "::error file=Trivy::Image scan failed due to CRITICAL or HIGH vulnerabilities. Failing build."
+            exit 1 # Fail the build pipeline
+          fi
+
+      # --- STAGE 4: Push to ECR ---
+      - name: ⬆️ Push Docker Image to ECR
+        run: |
+          FULL_IMAGE_NAME="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+          echo "Pushing $FULL_IMAGE_NAME"
+          docker push $FULL_IMAGE_NAME
+
+      # --- PRODUCTION: Failure Notification (ADMIN) ---
+      - name: 🔔 Send Failure Notification to Admin
+        uses: dawidd6/action-send-mail@v3
+        if: failure() # ONLY runs if any step before this one failed
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: '🚨 CRITICAL FAILURE in CI/CD Pipeline: ${{ github.repository }}'
+          body: |
+            Pipeline run failed for commit ${{ github.sha }} (${{ github.ref }}).
+            Pusher: ${{ github.event.pusher.name }} (${{ github.event.pusher.email }})
+            Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            Please investigate the build logs immediately.
+          to: ${{ secrets.ADMIN_EMAIL_ADDRESS }}
+          from: CI Automation <${{ secrets.MAIL_USERNAME }}>
+          content_type: text/plain

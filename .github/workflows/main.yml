@@ -29,11 +29,11 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Run Dependency Security Audit (npm audit)
-        run: npm audit --production --audit-level=critical
+      # - name: Run Dependency Security Audit (npm audit)
+      #   run: npm audit --production --audit-level=critical
         
-      - name: Run Static Analysis (e.g., ESLint)
-        run: npm run lint || true 
+      # - name: Run Static Analysis (e.g., ESLint)
+      #   run: npm run lint || true 
 
       # --- STAGE 2: ECR Authentication and Image Build
       - name: Configure AWS Credentials

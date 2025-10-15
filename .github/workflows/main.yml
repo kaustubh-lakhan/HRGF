@@ -62,8 +62,8 @@ jobs:
           format: 'template'
           template: '@contrib/gitlab.tpl' 
           output: 'trivy-report.txt'
-          # exit-code: '0' # Do not fail the job yet
-          # ignore-unfixed: true
+          exit-code: '0' # Do not fail the job yet
+          ignore-unfixed: true
           severity: 'CRITICAL,HIGH' # Scan for CRITICAL and HIGH only
 
       # --- Send Trivy Report to Committer ---

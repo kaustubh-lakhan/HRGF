@@ -59,7 +59,7 @@ jobs:
         with:
           image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
           # Use a simple template and save output to a file
-          format: 'template'
+          format: 'table'
           template: '@contrib/gitlab.tpl' 
           output: 'trivy-report.txt'
           exit-code: '0' # Do not fail the job yet

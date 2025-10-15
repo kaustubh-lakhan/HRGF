@@ -67,20 +67,20 @@ jobs:
           severity: 'CRITICAL,HIGH' # Scan for CRITICAL and HIGH only
 
       # --- Send Trivy Report to Committer ---
-      - name: Send Trivy Report to Committer
-        uses: dawidd6/action-send-mail@v3
-        if: success() || failure() # Always run this step
-        with:
-          server_address: ${{ secrets.MAIL_SERVER }}
-          server_port: ${{ secrets.MAIL_PORT }}
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: 'Trivy Scan Report for Frontend App | ${{ env.IMAGE_TAG }}'
-          body: 'Hello ${{ github.event.pusher.name }}, a new image has been scanned. Please see the attached report for CRITICAL and HIGH vulnerabilities.'
-          to: ${{ github.event.pusher.email }} # Send to the user who pushed
-          from: CI Automation <${{ secrets.MAIL_USERNAME }}>
-          content_type: text/plain
-          attachments: trivy-report.txt
+      # - name: Send Trivy Report to Committer
+      #   uses: dawidd6/action-send-mail@v3
+      #   if: success() || failure() # Always run this step
+      #   with:
+      #     server_address: ${{ secrets.MAIL_SERVER }}
+      #     server_port: ${{ secrets.MAIL_PORT }}
+      #     username: ${{ secrets.MAIL_USERNAME }}
+      #     password: ${{ secrets.MAIL_PASSWORD }}
+      #     subject: 'Trivy Scan Report for Frontend App | ${{ env.IMAGE_TAG }}'
+      #     body: 'Hello ${{ github.event.pusher.name }}, a new image has been scanned. Please see the attached report for CRITICAL and HIGH vulnerabilities.'
+      #     to: ${{ github.event.pusher.email }} # Send to the user who pushed
+      #     from: CI Automation <${{ secrets.MAIL_USERNAME }}>
+      #     content_type: text/plain
+      #     attachments: trivy-report.txt
 
       # --- Enforce Security Gate (Fail if Critical/High found) ---
       - name: Security Gate Check
@@ -104,21 +104,21 @@ jobs:
           docker push $FULL_IMAGE_NAME
 
       # --- PRODUCTION: Failure Notification (ADMIN) ---
-      - name: Send Failure Notification to Admin
-        uses: dawidd6/action-send-mail@v3
-        if: failure() # ONLY runs if any step before this one failed
-        with:
-          server_address: ${{ secrets.MAIL_SERVER }}
-          server_port: ${{ secrets.MAIL_PORT }}
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: 'CRITICAL FAILURE in CI/CD Pipeline: ${{ github.repository }}'
-          body: |
-            Pipeline run failed for commit ${{ github.sha }} (${{ github.ref }}).
-            Pusher: ${{ github.event.pusher.name }} (${{ github.event.pusher.email }})
-            Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      # - name: Send Failure Notification to Admin
+      #   uses: dawidd6/action-send-mail@v3
+      #   if: failure() # ONLY runs if any step before this one failed
+      #   with:
+      #     server_address: ${{ secrets.MAIL_SERVER }}
+      #     server_port: ${{ secrets.MAIL_PORT }}
+      #     username: ${{ secrets.MAIL_USERNAME }}
+      #     password: ${{ secrets.MAIL_PASSWORD }}
+      #     subject: 'CRITICAL FAILURE in CI/CD Pipeline: ${{ github.repository }}'
+      #     body: |
+      #       Pipeline run failed for commit ${{ github.sha }} (${{ github.ref }}).
+      #       Pusher: ${{ github.event.pusher.name }} (${{ github.event.pusher.email }})
+      #       Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
             
-            Please investigate the build logs immediately.
-          to: ${{ secrets.ADMIN_EMAIL_ADDRESS }}
-          from: CI Automation <${{ secrets.MAIL_USERNAME }}>
-          content_type: text/plain
+      #       Please investigate the build logs immediately.
+      #     to: ${{ secrets.ADMIN_EMAIL_ADDRESS }}
+      #     from: CI Automation <${{ secrets.MAIL_USERNAME }}>
+      #     content_type: text/plain

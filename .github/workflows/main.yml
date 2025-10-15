@@ -62,8 +62,8 @@ jobs:
           format: 'template'
           template: '@contrib/gitlab.tpl' 
           output: 'trivy-report.txt'
-          exit-code: '0' # Do not fail the job yet
-          ignore-unfixed: true
+          # exit-code: '0' # Do not fail the job yet
+          # ignore-unfixed: true
           severity: 'CRITICAL,HIGH' # Scan for CRITICAL and HIGH only
 
       # --- Send Trivy Report to Committer ---
@@ -83,18 +83,18 @@ jobs:
       #     attachments: trivy-report.txt
 
       # --- Enforce Security Gate (Fail if Critical/High found) ---
-      - name: Security Gate Check
-        run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy:latest image \
-            --exit-code 1 --severity CRITICAL,HIGH \
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} || true
+      # - name: Security Gate Check
+      #   run: |
+      #     docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+      #       aquasec/trivy:latest image \
+      #       --exit-code 1 --severity CRITICAL,HIGH \
+      #       ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} || true
           
-          # Check the exit code from the last command (using the shell's $? variable)
-          if [ $? -ne 0 ]; then
-            echo "::error file=Trivy::Image scan failed due to CRITICAL or HIGH vulnerabilities. Failing build."
-            exit 1 # Fail the build pipeline
-          fi
+      #     # Check the exit code from the last command (using the shell's $? variable)
+      #     if [ $? -ne 0 ]; then
+      #       echo "::error file=Trivy::Image scan failed due to CRITICAL or HIGH vulnerabilities. Failing build."
+      #       exit 1 # Fail the build pipeline
+      #     fi
 
       # --- STAGE 4: Push to ECR ---
       - name: Push Docker Image to ECR

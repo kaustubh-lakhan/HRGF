@@ -87,7 +87,7 @@ module "eks" {
 
 
 module "addons" {
-  source = "./addons_module"
+  source = "./addons_modules"
 
   cluster_name      = module.eks.cluster_name
   cluster_endpoint  = module.eks.cluster_endpoint

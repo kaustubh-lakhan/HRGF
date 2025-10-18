@@ -70,7 +70,7 @@ module "secrets_manager_csi_irsa" {
   version = "~> 5.0"
   role_name_prefix = "sm-csi-driver"
   attach_secretsmanager_csi_driver_policy = true
-  oidc_providers = { main = { provider_arn = var.oidc_provider_arn; namespace_service_accounts = ["kube-system:aws-secrets-manager-csi-driver"] } }
+  oidc_providers = { main = { provider_arn = var.oidc_provider_arn, namespace_service_accounts = ["kube-system:aws-secrets-manager-csi-driver"] } }
 }
 
 resource "helm_release" "aws_secrets_manager_csi_driver" {

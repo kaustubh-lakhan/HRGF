@@ -12,22 +12,6 @@ variable "cloudwatch_log_group_name" {}
 # Note: var.aws_region is used in the Fluent Bit templatefile but not defined here.
 # Assuming it is either defined elsewhere or will be passed via terraform.tfvars.
 
-# --- 1. Providers Setup ---
-data "aws_eks_cluster_auth" "cluster" { name = var.cluster_name }
-
-provider "kubernetes" {
-  host                   = var.cluster_endpoint
-  cluster_ca_certificate = base64decode(var.cluster_ca_data)
-  token                  = data.aws_eks_cluster_auth.cluster.token
-}
-
-provider "helm" {
-  kubernetes {
-    host                   = var.cluster_endpoint
-    cluster_ca_certificate = base64decode(var.cluster_ca_data)
-    token                  = data.aws_eks_cluster_auth.cluster.token
-  }
-}
 
 
 # ArgoCD

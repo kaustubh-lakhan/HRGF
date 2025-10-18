@@ -46,9 +46,8 @@ module "eks" {
   cluster_endpoint_public_access  = false
   cluster_endpoint_private_access = true
 
-  cluster_encryption_enabled = true
   enable_irsa = true
-  enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+  cluster_enabled_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
   
   fargate_profiles = {
     default = {
@@ -75,6 +74,34 @@ module "eks" {
   }
 }
 
+data "aws_eks_cluster_auth" "cluster" {
+  name = module.eks.cluster_id # Use the EKS module output
+}
+
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  token                  = data.aws_eks_cluster_auth.cluster.token
+  # This ensures the Kubernetes provider waits for EKS creation
+  # before attempting to connect.
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args = ["eks", "get-token", "--cluster-name", module.eks.cluster_id]
+  }
+
+  # NOTE: Remove 'token' if using 'exec' for simplicity/correctness, 
+  # or adjust to use cluster_name output if it is available.
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+    token                  = data.aws_eks_cluster_auth.cluster.token
+    # Add 'exec' block here if required for Helm provider authentication
+  }
+}
 
 module "addons" {
   source = "./addons_modules"
@@ -90,7 +117,11 @@ module "addons" {
 
   # Configuration
   cloudwatch_log_group_name = aws_cloudwatch_log_group.eks.name
+  depends_on = [
+    module.eks
+  ]
 }
+
 
 
 output "cluster_name" {

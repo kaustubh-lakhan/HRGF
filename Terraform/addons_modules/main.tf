@@ -1,3 +1,7 @@
+variable "aws_region" {
+  description = "The AWS region where the resources will be created."
+  type        = string
+}
 variable "cluster_name" {}
 variable "cluster_endpoint" {}
 variable "cluster_ca_data" {}
@@ -33,7 +37,7 @@ resource "helm_release" "argocd" {
   chart            = "argo-cd"
   namespace        = "argocd"
   create_namespace = true
-  
+
   values = [
     yamlencode({
       server = {
@@ -67,14 +71,13 @@ data "kubernetes_service" "argocd_server" {
   }
 }
 
----
 
 # AWS Secrets Manager
 module "secrets_manager_csi_irsa" {
   source                          = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version                         = "~> 5.0"
   role_name_prefix                = "sm-csi-driver"
-  attach_secretsmanager_csi_driver_policy = true
+  attach_external_secrets_policy = true
   # FIX 1: Replaced semicolon with comma in oidc_providers map
   oidc_providers = { main = { provider_arn = var.oidc_provider_arn, namespace_service_accounts = ["kube-system:aws-secrets-manager-csi-driver"] } }
 }
@@ -84,20 +87,19 @@ resource "helm_release" "aws_secrets_manager_csi_driver" {
   repository       = "https://aws.github.io/secrets-manager-csi-driver-helm"
   chart            = "secrets-manager-csi-driver"
   namespace        = "kube-system"
-  
+
   # FIX 2: Converted to multi-line set block
-  set { 
+  set {
     name  = "serviceAccount.name"
     value = "aws-secrets-manager-csi-driver"
   }
   # FIX 3: Converted to multi-line set block
-  set { 
+  set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
     value = module.secrets_manager_csi_irsa.iam_role_arn
   }
 }
 
----
 
 # Fluent Bit
 resource "aws_iam_policy" "fluentbit_cw" {
@@ -107,14 +109,16 @@ resource "aws_iam_policy" "fluentbit_cw" {
     Statement = [
       { Effect = "Allow", Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"], Resource = "*" }
     ]
-  })
+ })
 }
 
 module "fluentbit_irsa" {
   source             = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version            = "~> 5.0"
   role_name_prefix   = "fluentbit"
-  iam_policy_arns    = [aws_iam_policy.fluentbit_cw.arn]
+  role_policy_arns = {
+    fluentbit_policy = aws_iam_policy.fluentbit_cw.arn
+  }
   # FIX 4: Replaced semicolon with comma in oidc_providers map
   oidc_providers = { main = { provider_arn = var.oidc_provider_arn, namespace_service_accounts = ["logging:fluent-bit"] } }
 }
@@ -125,7 +129,7 @@ resource "helm_release" "fluentbit" {
   chart            = "fluent-bit"
   namespace        = "logging"
   create_namespace = true
-  
+
   values = [
     templatefile("${path.module}/fluentbit-values.yaml", {
       region_name = var.aws_region,
@@ -133,18 +137,18 @@ resource "helm_release" "fluentbit" {
     })
   ]
   # FIX 5: Converted to multi-line set block (originally used semicolon)
-  set { 
+  set {
     name  = "serviceAccount.name"
     value = "fluent-bit"
   }
   # FIX 6: Converted to multi-line set block (originally used semicolon)
-  set { 
+  set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
     value = module.fluentbit_irsa.iam_role_arn
-  }
+	  }
 }
 
----
+#---
 
 # Karpenter and AWS LBC
 module "karpenter_irsa" {
@@ -163,38 +167,37 @@ resource "helm_release" "karpenter" {
   version          = "v0.34.0"
   namespace        = "karpenter"
   create_namespace = true
-  
+
   # FIX 8-13: Converted inline set blocks to multi-line blocks for correctness
-  set { 
+   set {
     name  = "settings.clusterName"
     value = var.cluster_name
   }
-  set { 
+  set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
     value = module.karpenter_irsa.iam_role_arn
   }
-  set { 
+  set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/sts-regional-endpoints"
     value = "true"
   }
-  set { 
+  set {
     name  = "tolerations[0].key"
     value = "dedicated"
   }
-  set { 
+  set {
     name  = "tolerations[0].operator"
     value = "Equal"
   }
-  set { 
+  set {
     name  = "tolerations[0].value"
     value = "addons"
   }
-  set { 
+  set {
     name  = "tolerations[0].effect"
     value = "NoSchedule"
   }
 }
-
 # AWS Load Balancer Controller
 module "aws_lbc_irsa" {
   source                                   = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
@@ -210,43 +213,43 @@ resource "helm_release" "aws_lbc" {
   repository       = "https://aws.github.io/eks-charts"
   chart            = "aws-load-balancer-controller"
   namespace        = "kube-system"
-  
+
   # FIX 15-22: Converted inline set blocks to multi-line blocks for correctness
-  set { 
+  set {
     name  = "clusterName"
     value = var.cluster_name
   }
-  set { 
+  set {
     name  = "serviceAccount.name"
     value = "aws-load-balancer-controller"
   }
-  set { 
+  set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
     value = module.aws_lbc_irsa.iam_role_arn
   }
-  set { 
+  set {
     name  = "serviceAccount.create"
     value = "false"
   }
-  set { 
+  set {
     name  = "tolerations[0].key"
     value = "dedicated"
   }
-  set { 
+  set {
     name  = "tolerations[0].operator"
-    value = "Equal"
+	   value = "Equal"
   }
-  set { 
+  set {
     name  = "tolerations[0].value"
     value = "addons"
   }
-  set { 
+  set {
     name  = "tolerations[0].effect"
     value = "NoSchedule"
   }
 }
 
----
+#---
 
 # Prometheus and Grafana
 resource "helm_release" "monitoring" {
@@ -260,10 +263,13 @@ resource "helm_release" "monitoring" {
   ]
 }
 
----
+#---
 
 # --- Outputs ---
 output "argocd_nlb_hostname" {
   description = "Hostname for the ArgoCD Load Balancer"
   value       = element(coalescelist(data.kubernetes_service.argocd_server.status[0].load_balancer[0].ingress.*.hostname, [""]), 0)
 }
+	
+	
+	

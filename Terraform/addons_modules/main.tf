@@ -79,8 +79,8 @@ resource "helm_release" "aws_secrets_manager_csi_driver" {
   chart            = "secrets-manager-csi-driver"
   namespace        = "kube-system"
   
-  set { name = "serviceAccount.name"; value = "aws-secrets-manager-csi-driver" }
-  set { name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"; value = module.secrets_manager_csi_irsa.iam_role_arn }
+  set { name = "serviceAccount.name" value = "aws-secrets-manager-csi-driver" }
+  set { name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn", value = module.secrets_manager_csi_irsa.iam_role_arn }
 }
 
 #Fluent Bit
@@ -99,7 +99,7 @@ module "fluentbit_irsa" {
   version = "~> 5.0"
   role_name_prefix = "fluentbit"
   iam_policy_arns = [aws_iam_policy.fluentbit_cw.arn]
-  oidc_providers = { main = { provider_arn = var.oidc_provider_arn; namespace_service_accounts = ["logging:fluent-bit"] } }
+  oidc_providers = { main = { provider_arn = var.oidc_provider_arn, namespace_service_accounts = ["logging:fluent-bit"] } }
 }
 
 resource "helm_release" "fluentbit" {
@@ -115,8 +115,8 @@ resource "helm_release" "fluentbit" {
       log_group   = var.cloudwatch_log_group_name
     })
   ]
-  set { name = "serviceAccount.name"; value = "fluent-bit" }
-  set { name = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"; value = module.fluentbit_irsa.iam_role_arn }
+  set { name = "serviceAccount.name", value = "fluent-bit" }
+  set { name = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn", value = module.fluentbit_irsa.iam_role_arn }
 }
 
 #Karpenter and AWS LBC ---
@@ -125,7 +125,7 @@ module "karpenter_irsa" {
   version = "~> 5.0"
   role_name_prefix = "karpenter"
   attach_karpenter_controller_policy = true
-  oidc_providers = { main = { provider_arn = var.oidc_provider_arn; namespace_service_accounts = ["karpenter:karpenter"] } }
+  oidc_providers = { main = { provider_arn = var.oidc_provider_arn, namespace_service_accounts = ["karpenter:karpenter"] } }
 }
 
 resource "helm_release" "karpenter" {
@@ -136,13 +136,13 @@ resource "helm_release" "karpenter" {
   namespace        = "karpenter"
   create_namespace = true
   
-  set { name  = "settings.clusterName" ; value = var.cluster_name }
-  set { name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"; value = module.karpenter_irsa.iam_role_arn }
-  set { name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/sts-regional-endpoints"; value = "true" }
-  set { name = "tolerations[0].key"; value = "dedicated" }
-  set { name = "tolerations[0].operator"; value = "Equal" }
-  set { name = "tolerations[0].value"; value = "addons" }
-  set { name = "tolerations[0].effect"; value = "NoSchedule" }
+  set { name  = "settings.clusterName" , value = var.cluster_name }
+  set { name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn", value = module.karpenter_irsa.iam_role_arn }
+  set { name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/sts-regional-endpoints", value = "true" }
+  set { name = "tolerations[0].key", value = "dedicated" }
+  set { name = "tolerations[0].operator", value = "Equal" }
+  set { name = "tolerations[0].value", value = "addons" }
+  set { name = "tolerations[0].effect", value = "NoSchedule" }
 }
 
 # AWS Load Balancer Controller
@@ -151,7 +151,7 @@ module "aws_lbc_irsa" {
   version = "~> 5.0"
   role_name_prefix = "aws-lbc"
   attach_load_balancer_controller_policy = true
-  oidc_providers = { main = { provider_arn = var.oidc_provider_arn; namespace_service_accounts = ["kube-system:aws-load-balancer-controller"] } }
+  oidc_providers = { main = { provider_arn = var.oidc_provider_arn, namespace_service_accounts = ["kube-system:aws-load-balancer-controller"] } }
 }
 
 resource "helm_release" "aws_lbc" {
@@ -159,14 +159,14 @@ resource "helm_release" "aws_lbc" {
   repository       = "https://aws.github.io/eks-charts"
   chart            = "aws-load-balancer-controller"
   namespace        = "kube-system"
-  set { name  = "clusterName" ; value = var.cluster_name }
-  set { name  = "serviceAccount.name" ; value = "aws-load-balancer-controller" }
-  set { name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"; value = module.aws_lbc_irsa.iam_role_arn }
-  set { name  = "serviceAccount.create"; value = "false" }
-  set { name = "tolerations[0].key"; value = "dedicated" }
-  set { name = "tolerations[0].operator"; value = "Equal" }
-  set { name = "tolerations[0].value"; value = "addons" }
-  set { name = "tolerations[0].effect"; value = "NoSchedule" }
+  set { name  = "clusterName" , value = var.cluster_name }
+  set { name  = "serviceAccount.name" , value = "aws-load-balancer-controller" }
+  set { name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn", value = module.aws_lbc_irsa.iam_role_arn }
+  set { name  = "serviceAccount.create", value = "false" }
+  set { name = "tolerations[0].key", value = "dedicated" }
+  set { name = "tolerations[0].operator", value = "Equal" }
+  set { name = "tolerations[0].value", value = "addons" }
+  set { name = "tolerations[0].effect", value = "NoSchedule" }
 }
 
 

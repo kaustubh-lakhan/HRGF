@@ -1,0 +1,12 @@
+# FILE: terraform/addons_module/fluentbit-values.yaml
+
+# Configuration to ship logs to AWS CloudWatch
+config:
+  outputs: |
+    [OUTPUT]
+        Name                cloudwatch
+        Match               *
+        region              ${region_name}
+        log_group_name      ${log_group}
+        log_stream_prefix   fluentbit-
+        auto_create_group   false 

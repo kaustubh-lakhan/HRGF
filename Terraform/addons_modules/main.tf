@@ -25,7 +25,6 @@ provider "helm" {
   }
 }
 
----
 
 # ArgoCD
 resource "helm_release" "argocd" {

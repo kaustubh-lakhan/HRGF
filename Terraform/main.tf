@@ -46,7 +46,7 @@ module "eks" {
   cluster_endpoint_public_access  = false
   cluster_endpoint_private_access = true
 
-  cluster_encryption_config = [{ resources = ["secrets"] }]
+  cluster_encryption_enabled = true
   enable_irsa = true
   enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
   
@@ -66,16 +66,6 @@ module "eks" {
       ]
     }
   }
-  
-  managed_node_groups = {
-    addons = {
-      instance_types = ["t3.medium"] 
-      min_size       = 3
-      max_size       = 3
-      desired_size   = 3
-      taints         = [{ key = "dedicated", value = "addons", effect = "NO_SCHEDULE" }] 
-    }
-  }
 
   cluster_addons = {
     coredns            = {}
@@ -93,7 +83,7 @@ module "addons" {
   cluster_endpoint  = module.eks.cluster_endpoint
   cluster_ca_data   = module.eks.cluster_certificate_authority_data
   oidc_provider_arn = module.eks.oidc_provider_arn
-  
+  aws_region        = var.aws_region
   # Networking
   private_subnet_ids = module.vpc.private_subnets
   public_subnet_ids  = module.vpc.public_subnets

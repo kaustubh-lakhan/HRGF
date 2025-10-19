@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# 1. Define the base Helm chart directory
+helmCharts:
+  - name: my-web-app
+    releaseName: my-prod-app
+    namespace: prod
+    repo: ./../../../chart
+    version: 0.1.0
+
+# 2. Apply patches to override the default Helm values
+patches:
+  - path: image-patch.yaml
+    target:
+      kind: Deployment
+      name: my-web-app # The base name from the Helm chart template
+  - path: ingress-patch.yaml
+    target:
+      kind: Ingress
+      name: my-web-app

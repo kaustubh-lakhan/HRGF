@@ -1,0 +1,28 @@
+# Default values. These will be overridden by Kustomize for specific environments.
+replicaCount: 2
+
+image:
+  repository: placeholder-ecr-repo
+  pullPolicy: IfNotPresent
+  # The tag must be explicitly set by the Kustomize overlay (e.g., 'v1.0.0')
+  tag: "latest-placeholder"
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: "alb" # Uses the LBC
+  hosts:
+    - host: myapp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  # Key annotations for the AWS Load Balancer Controller
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing # Use 'internal' for private
+    alb.ingress.kubernetes.io/target-type: ip
+    # Specify the VPC subnets tags where the ALB should be provisioned (MANDATORY)
+    # alb.ingress.kubernetes.io/subnets: subnet-xxxx, subnet-yyyy

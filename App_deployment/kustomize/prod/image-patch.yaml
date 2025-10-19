@@ -1,0 +1,14 @@
+# Strategic Merge Patch for Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-web-app
+spec:
+  template:
+    spec:
+      containers:
+        - name: my-web-app # Name of the container inside the deployment
+          image:
+            [
+              891376995391.dkr.ecr.us-east-1.amazonaws.com/frontend-app:54510a64557d4fbe142fe2c16d2a286a1503e9be,
+            ]

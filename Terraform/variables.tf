@@ -35,4 +35,3 @@ variable "cloudwatch_log_group_name" {
   type        = string
 }
 
-data "aws_availability_zones" "available" {}
